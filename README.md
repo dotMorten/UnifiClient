@@ -6,7 +6,7 @@ A .NET Library for the Ubiquity Unifi REST and Websocket APIs
 Monitoring cameras:
 
 ```cs
-string host = "192.168.1.1";
+string host = "192.168.1.1"; // host name of your gateway
 string username = "your_username"; // Must be local account
 string password = "your_password";
 var client = new dotMorten.Unifi.ProtectClient(host, username, password, ignoreSslErrors: true);
@@ -23,7 +23,7 @@ client.CameraUpdated += (sender, camera) += Debug.WriteLine($"Properties on {cam
 Monitoring network (work in progress):
 
 ```cs
-string host = "192.168.1.1";
+string host = "192.168.1.1"; // host name of your gateway
 string username = "your_username"; // Must be local account
 string password = "your_password";
 var client = new dotMorten.Unifi.NetworkClient(host, username, password, ignoreSslErrors: true);
