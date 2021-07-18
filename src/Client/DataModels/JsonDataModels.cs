@@ -646,9 +646,9 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string HostShortname { get; set; }
         public bool IsHardware { get; set; }
         public string TimeFormat { get; set; }
-        public long RecordingRetentionDurationMs { get; set; }
+        public long? RecordingRetentionDurationMs { get; set; }
         public bool EnableCrashReporting { get; set; }
-        public bool DisableAudio { get; set; }
+        public bool? DisableAudio { get; set; }
         public string AnalyticsData { get; set; }
         public string AnonymousDeviceId { get; set; }
         public int CameraUtilization { get; set; }
