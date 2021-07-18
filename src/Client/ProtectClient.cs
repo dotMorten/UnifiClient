@@ -197,7 +197,7 @@ namespace dotMorten.Unifi
         /// <summary>
         /// Raised when the properties of a user is updated.
         /// </summary>
-        public event EventHandler<User> UserUpdated;
+        public event EventHandler<UserAccount> UserUpdated;
 
         /// <summary>
         /// Raised when the properties of a bridge is updated.
