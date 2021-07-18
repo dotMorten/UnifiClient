@@ -16,7 +16,7 @@ namespace dotMorten.Unifi
     {
         private const string bootstrapUrl = "/proxy/protect/api/bootstrap";
         private const int UPDATE_PACKET_HEADER_SIZE = 8; //  Update realtime API packet header size, in bytes.
-        
+
         public ProtectClient(string hostname, string username, string password, bool ignoreSslErrors) : base(hostname, username, password, ignoreSslErrors)
         {
         }
@@ -43,7 +43,7 @@ namespace dotMorten.Unifi
             else
                 return HttpClient.GetStreamAsync($"http://{camera.Host}/snap.jpeg");
         }
-        
+
         protected override void ProcessWebSocketMessage(WebSocketMessageType type, byte[] buffer, int count)
         {
             if (type == WebSocketMessageType.Text)
@@ -152,13 +152,20 @@ namespace dotMorten.Unifi
                         {
                             if (action.ModelKey == "event")
                             {
+                                Debug.WriteLine("Event: " + json);
                                 var addDataEvent = JsonConvert.DeserializeObject<AddDataFrame>(json);
-                                Debug.WriteLine("Got event: " + addDataEvent.Type);
+                                //Debug.WriteLine("Got event: " + addDataEvent.Type);
                                 var camera = System.Cameras.Where(c => c.Id == addDataEvent.Camera).FirstOrDefault();
                                 if (addDataEvent.Type == "ring")
-                                    Ring?.Invoke(this, camera);
+                                    Ring?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
                                 else if (addDataEvent.Type == "motion")
-                                    Motion?.Invoke(this, camera);
+                                    Motion?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
+                                else if ((addDataEvent.Type == "smartDetectZone"))
+                                {
+                                    // {"type":"smartDetectZone","start":1626580814723,"score":66,"smartDetectTypes":["person"],"smartDetectEvents":[],"camera":"5f3ec80903a2bf038700222e","partition":null,"id":"60f3a7520032cb0387001da8","modelKey":"event"}
+                                    var handler = SmartDetectZone;
+                                    SmartDetectZone?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
+                                }
                             }
                         }
                     }
@@ -175,10 +182,15 @@ namespace dotMorten.Unifi
         }
 
         /// <summary>
+        /// Raised when a smart detect event occurs.
+        /// </summary>
+        public event EventHandler<CameraEventArgs> SmartDetectZone;
+
+        /// <summary>
         /// Raised when a doorbell camera rings.
         /// </summary>
         /// <seealso cref="Camera.LastRing"/>
-        public event EventHandler<Camera> Ring;
+        public event EventHandler<CameraEventArgs> Ring;
 
         /// <summary>
         /// Raised when a camera detects motion.
@@ -187,7 +199,7 @@ namespace dotMorten.Unifi
         /// Use the <see cref="CameraUpdated"/> event to track when the motion ends by looking at the camera's <see cref="Camera.IsMotionDetected"/> value.
         /// </remarks>
         /// <seealso cref="Camera.IsMotionDetected"/>
-        public event EventHandler<Camera> Motion;
+        public event EventHandler<CameraEventArgs> Motion;
 
         /// <summary>
         /// Raised when the properties of a camera is updated.
@@ -219,4 +231,22 @@ namespace dotMorten.Unifi
         /// </summary>
         public event EventHandler<Group> GroupUpdated;
     }
+    public class CameraEventArgs : EventArgs
+    {
+        internal CameraEventArgs(AddDataFrame addDataEvent, Camera camera)
+        {
+            Camera = camera;
+            Start = DateTimeOffset.FromUnixTimeMilliseconds(addDataEvent.Start).ToLocalTime();
+            End =  addDataEvent.End.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(addDataEvent.End.Value).ToLocalTime() : null;
+            Score = addDataEvent.Score;
+            SmartDetectTypes = addDataEvent.SmartDetectTypes.ToArray();
+        }
+
+        public int Score { get; }
+        public string[] SmartDetectTypes { get; }
+        public Camera Camera { get; }
+        public DateTimeOffset Start { get; }
+        public DateTimeOffset? End { get; }
+    }
+
 }

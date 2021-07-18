@@ -50,7 +50,7 @@ namespace dotMorten.Unifi.DataModels
     {
         public string Type { get; set; }
         public long Start { get; set; }
-        public long End { get; set; }
+        public long? End { get; set; }
         public int Score { get; set; }
         public string Camera { get; set; }
         public string Id { get; set; }
