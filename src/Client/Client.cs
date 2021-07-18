@@ -19,13 +19,19 @@ namespace dotMorten.Unifi
         private readonly string _password;
         
         private Task _socketProcessTask;
+
+        public string CsftToken { get; private set; }
         
-        private protected string CsftToken { get; private set; }
-        
-        private protected string Cookie { get; private set; }
+        public string Cookie { get; private set; }
         
         private protected HttpClient HttpClient { get; }
-                
+
+        protected Client(string hostname, bool ignoreSslErrors, string cookie, string csftToken) : this(hostname, null, null, ignoreSslErrors)
+        {
+            Cookie = cookie;
+            CsftToken = csftToken;
+        }
+
         protected Client(string hostname, string username, string password, bool ignoreSslErrors)
         {
             HostName = hostname;
@@ -45,11 +51,15 @@ namespace dotMorten.Unifi
 
         public virtual async Task OpenAsync(CancellationToken cancellationToken)
         {
-            var jsonCredentials = $"{{\"password\":\"{_password}\", \"username\":\"{_username}\" }}";
-            var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", new StringContent(jsonCredentials, Encoding.UTF8, "application/json")).ConfigureAwait(false);
-            loginResult.EnsureSuccessStatusCode();
-            CsftToken = loginResult.Headers.GetValues("X-CSRF-Token").FirstOrDefault();
-            Cookie = loginResult.Headers.GetValues("Set-Cookie").FirstOrDefault();
+            if (CsftToken is null && Cookie is null)
+            {
+                var jsonCredentials = $"{{\"password\":\"{_password}\", \"username\":\"{_username}\" }}";
+                var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", new StringContent(jsonCredentials, Encoding.UTF8, "application/json")).ConfigureAwait(false);
+                loginResult.EnsureSuccessStatusCode();
+
+                CsftToken = loginResult.Headers.GetValues("X-CSRF-Token").FirstOrDefault();
+                Cookie = loginResult.Headers.GetValues("Set-Cookie").FirstOrDefault();
+            }
             HttpClient.DefaultRequestHeaders.Add("Cookie", Cookie);
             HttpClient.DefaultRequestHeaders.Add("X-CSRF-Token", CsftToken);
 

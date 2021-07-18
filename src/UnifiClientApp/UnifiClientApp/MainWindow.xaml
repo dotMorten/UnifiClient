@@ -1,0 +1,23 @@
+﻿<Window
+    x:Class="UnifiClientApp.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:UnifiClientApp"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid x:Name="LayoutRoot">
+        <TextBox x:Name="status" AcceptsReturn="true" />
+        <Grid x:Name="signinArea" Background="White">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="300" BorderBrush="Black" BorderThickness="1" Padding="20">
+                <TextBox x:Name="tbHostname" Header="Hostname" Text="192.168.1.1" />
+                <TextBox x:Name="tbUsername" Header="Username" Text="" />
+                <PasswordBox x:Name="pwdBox"  Header="Password" />
+                <Button Click="SignIn_Click">Sign In</Button>
+                <ProgressRing x:Name="progress" IsActive="false" />
+            </StackPanel>
+        </Grid>
+        
+    </Grid>
+</Window>
