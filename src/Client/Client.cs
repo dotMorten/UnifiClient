@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -14,19 +13,19 @@ namespace dotMorten.Unifi
 {
     public abstract class Client : IDisposable
     {
-        private readonly string _username;
+        private readonly string? _username;
 
-        private readonly string _password;
+        private readonly string? _password;
         
-        private Task _socketProcessTask;
+        private Task? _socketProcessTask;
 
-        public string CsftToken { get; private set; }
+        public string? CsftToken { get; private set; }
         
-        public string Cookie { get; private set; }
+        public string? Cookie { get; private set; }
         
         private protected HttpClient HttpClient { get; }
 
-        protected Client(string hostname, bool ignoreSslErrors, string cookie, string csftToken) : this(hostname, null, null, ignoreSslErrors)
+        protected Client(string hostname, bool ignoreSslErrors, string cookie, string csftToken) : this(hostname, null!, null!, ignoreSslErrors)
         {
             Cookie = cookie;
             CsftToken = csftToken;
@@ -63,20 +62,43 @@ namespace dotMorten.Unifi
             HttpClient.DefaultRequestHeaders.Add("Cookie", Cookie);
             HttpClient.DefaultRequestHeaders.Add("X-CSRF-Token", CsftToken);
 
-            var socketUri = await OnSigninComplete();
+            await OnSignInCompleteAsync();
+            await ConnectWebSocketAsync();
+            IsOpen = true;
+        }
 
+        private async Task ConnectWebSocketAsync()
+        { 
             ClientWebSocket socket = new ClientWebSocket();
             if (IgnoreSslErrors)
                 socket.Options.RemoteCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
             socket.Options.SetRequestHeader("Cookie", Cookie);
             socket.Options.SetRequestHeader("X-CSRF-Token", CsftToken);
-            await socket.ConnectAsync(socketUri, cancellationToken).ConfigureAwait(false);
-
+            await socket.ConnectAsync(GetWebSocketUri(), CancellationToken.None).ConfigureAwait(false);
             IsOpen = true;
-            _socketProcessTask = ProcessWebSocket(socket, cancellationToken);
+            _socketProcessTask = ProcessWebSocket(socket);
         }
 
-        protected abstract Task<Uri> OnSigninComplete();
+        private async Task ReconnectWebSocketAsync()
+        {
+            try
+            {
+                if (_socketProcessTask != null)
+                    await _socketProcessTask;
+                await ConnectWebSocketAsync();
+            }
+            catch
+            {
+
+                Disconnected?.Invoke(this, EventArgs.Empty);
+                await CloseAsync();
+                return;
+            }
+        }
+
+        protected virtual Task OnSignInCompleteAsync() => Task.CompletedTask;
+
+        protected abstract Uri GetWebSocketUri();
 
         public virtual async Task CloseAsync()
         {
@@ -97,12 +119,21 @@ namespace dotMorten.Unifi
         {
         }
 
-        private async Task ProcessWebSocket(ClientWebSocket socket, CancellationToken cancellation)
+        private async Task ProcessWebSocket(ClientWebSocket socket)
         {
             var buffer = new byte[1024 * 256];
-            while (!cancellation.IsCancellationRequested && IsOpen)
+            WebSocketReceiveResult? result = null;
+            while (IsOpen)
             {
-                var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
+                try
+                {
+                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
+                }
+                catch(WebSocketException)
+                {
+                    _ = ReconnectWebSocketAsync();
+                    return;
+                }
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
                     Debug.WriteLine("Socket closed");
@@ -124,8 +155,7 @@ namespace dotMorten.Unifi
 
         protected abstract void ProcessWebSocketMessage(WebSocketMessageType messageType, byte[] buffer, int count);
 
-        public event EventHandler Disconnected;
-
+        public event EventHandler? Disconnected;
 
         internal static MemoryStream Deflate(byte[] buffer, int start, int count)
         {

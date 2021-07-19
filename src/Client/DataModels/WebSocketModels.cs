@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
+
 /// Types used for parsing Unifi web socket data
 namespace dotMorten.Unifi.DataModels
 {
@@ -27,37 +28,37 @@ namespace dotMorten.Unifi.DataModels
         /// <summary>
         /// 	What action is being taken. Known actions are add and update.
         /// </summary>
-        public string Action { get; set; }
+        public string? Action { get; set; }
         /// <summary>
         /// The identifier for the device we're updating.
         /// </summary>
-        public string Id { get; set; }
+        public string? Id { get; set; }
         /// <summary>
         /// The device model category that we're updating.
         /// </summary>
-        public string ModelKey { get; set; }
+        public string? ModelKey { get; set; }
         /// <summary>
         /// A new UUID generated on a per-update basis.
         /// </summary>
-        public string NewUpdateId { get; set; }
+        public string? NewUpdateId { get; set; }
 
-        public static ActionFrame FromJson(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<ActionFrame>(json);
+        public static ActionFrame? FromJson(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<ActionFrame>(json);
 
-        public static ActionFrame FromJson(byte[] buffer, int index, int count) => Newtonsoft.Json.JsonConvert.DeserializeObject<ActionFrame>(Encoding.UTF8.GetString(buffer, 0, count));
+        public static ActionFrame? FromJson(byte[] buffer, int index, int count) => Newtonsoft.Json.JsonConvert.DeserializeObject<ActionFrame>(Encoding.UTF8.GetString(buffer, 0, count));
     }
 
     internal class AddDataFrame
     {
-        public string Type { get; set; }
+        public string? Type { get; set; }
         public long Start { get; set; }
         public long? End { get; set; }
         public int Score { get; set; }
-        public string Camera { get; set; }
-        public string Id { get; set; }
-        public string ModelKey { get; set; }
-        public List<string> SmartDetectTypes { get; set; }
-        public static AddDataFrame FromJson(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<AddDataFrame>(json);
-        public static AddDataFrame FromJson(byte[] buffer, int index, int count) => Newtonsoft.Json.JsonConvert.DeserializeObject<AddDataFrame>(Encoding.UTF8.GetString(buffer, 0, count));
+        public string? Camera { get; set; }
+        public string? Id { get; set; }
+        public string? ModelKey { get; set; }
+        public List<string>? SmartDetectTypes { get; set; }
+        public static AddDataFrame? FromJson(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<AddDataFrame>(json);
+        public static AddDataFrame? FromJson(byte[] buffer, int index, int count) => Newtonsoft.Json.JsonConvert.DeserializeObject<AddDataFrame>(Encoding.UTF8.GetString(buffer, 0, count));
     }
 
     internal struct UnifiHeader

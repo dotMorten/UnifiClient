@@ -32,12 +32,18 @@ namespace dotMorten.Unifi
         {
         }
 
-        public ProtectSystemStatus System { get; private set; }
+        public ProtectSystemStatus? System { get; private set; }
 
-        protected override async Task<Uri> OnSigninComplete()
+        protected override async Task OnSignInCompleteAsync()
         {
             var result = await HttpClient.GetStringAsync($"https://{HostName}{bootstrapUrl}").ConfigureAwait(false);
             System = JsonConvert.DeserializeObject<ProtectSystemStatus>(result);
+        }
+
+        protected override Uri GetWebSocketUri()
+        {
+            if (System is null)
+                throw new InvalidOperationException();
             return new Uri($"wss://{HostName}/proxy/protect/ws/updates?lastUpdateId?lastUpdateId={System.LastUpdateId}");
         }
 
@@ -57,6 +63,7 @@ namespace dotMorten.Unifi
 
         protected override void ProcessWebSocketMessage(WebSocketMessageType type, byte[] buffer, int count)
         {
+            Debug.Assert(System != null);
             if (type == WebSocketMessageType.Text)
             {
                 var message = Encoding.UTF8.GetString(buffer, 0, count);
@@ -80,7 +87,7 @@ namespace dotMorten.Unifi
                 MemoryStream payload2 = header2.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header2.PayloadSize) :
                     new MemoryStream(buffer, (int)br.BaseStream.Position, header2.PayloadSize);
 
-                ActionFrame action = null;
+                ActionFrame? action = null;
                 if (header.PayloadFormat == PayloadFormat.Json)
                 {
                     action = ActionFrame.FromJson(payload.GetBuffer(), 0, (int)payload.Position);
@@ -109,6 +116,8 @@ namespace dotMorten.Unifi
                                     JsonConvert.PopulateObject(json, camera);
                                     CameraUpdated?.Invoke(this, camera);
                                 }
+                                if (!string.IsNullOrEmpty(action.NewUpdateId))
+                                    System.LastUpdateId = action.NewUpdateId;
                             }
                             else if (action.ModelKey == "bridge")
                             {
@@ -165,17 +174,22 @@ namespace dotMorten.Unifi
                             {
                                 Debug.WriteLine("Event: " + json);
                                 var addDataEvent = JsonConvert.DeserializeObject<AddDataFrame>(json);
-                                //Debug.WriteLine("Got event: " + addDataEvent.Type);
-                                var camera = System.Cameras.Where(c => c.Id == addDataEvent.Camera).FirstOrDefault();
-                                if (addDataEvent.Type == "ring")
-                                    Ring?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
-                                else if (addDataEvent.Type == "motion")
-                                    Motion?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
-                                else if ((addDataEvent.Type == "smartDetectZone"))
+                                if (addDataEvent != null)
                                 {
-                                    // {"type":"smartDetectZone","start":1626580814723,"score":66,"smartDetectTypes":["person"],"smartDetectEvents":[],"camera":"5f3ec80903a2bf038700222e","partition":null,"id":"60f3a7520032cb0387001da8","modelKey":"event"}
-                                    var handler = SmartDetectZone;
-                                    SmartDetectZone?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
+                                    var camera = System.Cameras.Where(c => c.Id == addDataEvent.Camera).FirstOrDefault();
+                                    if (camera != null)
+                                    {
+                                        if (addDataEvent.Type == "ring")
+                                            Ring?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
+                                        else if (addDataEvent.Type == "motion")
+                                            Motion?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
+                                        else if ((addDataEvent.Type == "smartDetectZone"))
+                                        {
+                                            // {"type":"smartDetectZone","start":1626580814723,"score":66,"smartDetectTypes":["person"],"smartDetectEvents":[],"camera":"5f3ec80903a2bf038700222e","partition":null,"id":"60f3a7520032cb0387001da8","modelKey":"event"}
+                                            var handler = SmartDetectZone;
+                                            SmartDetectZone?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -195,13 +209,13 @@ namespace dotMorten.Unifi
         /// <summary>
         /// Raised when a smart detect event occurs.
         /// </summary>
-        public event EventHandler<CameraEventArgs> SmartDetectZone;
+        public event EventHandler<CameraEventArgs>? SmartDetectZone;
 
         /// <summary>
         /// Raised when a doorbell camera rings.
         /// </summary>
         /// <seealso cref="Camera.LastRing"/>
-        public event EventHandler<CameraEventArgs> Ring;
+        public event EventHandler<CameraEventArgs>? Ring;
 
         /// <summary>
         /// Raised when a camera detects motion.
@@ -210,37 +224,37 @@ namespace dotMorten.Unifi
         /// Use the <see cref="CameraUpdated"/> event to track when the motion ends by looking at the camera's <see cref="Camera.IsMotionDetected"/> value.
         /// </remarks>
         /// <seealso cref="Camera.IsMotionDetected"/>
-        public event EventHandler<CameraEventArgs> Motion;
+        public event EventHandler<CameraEventArgs>? Motion;
 
         /// <summary>
         /// Raised when the properties of a camera is updated.
         /// </summary>
-        public event EventHandler<Camera> CameraUpdated;
+        public event EventHandler<Camera>? CameraUpdated;
  
         /// <summary>
         /// Raised when the properties of a user is updated.
         /// </summary>
-        public event EventHandler<UserAccount> UserUpdated;
+        public event EventHandler<UserAccount>? UserUpdated;
 
         /// <summary>
         /// Raised when the properties of a bridge is updated.
         /// </summary>
-        public event EventHandler<Bridge> BridgeUpdated;
+        public event EventHandler<Bridge>? BridgeUpdated;
 
         /// <summary>
         /// Raised when the properties of the NVR is updated.
         /// </summary>
-        public event EventHandler<Nvr> NvrUpdated;
+        public event EventHandler<Nvr>? NvrUpdated;
 
         /// <summary>
         /// Raised when the properties of a live view is updated.
         /// </summary>
-        public event EventHandler<LiveView> LiveViewUpdated;
+        public event EventHandler<LiveView>? LiveViewUpdated;
 
         /// <summary>
         /// Raised when the properties of a group is updated.
         /// </summary>
-        public event EventHandler<Group> GroupUpdated;
+        public event EventHandler<Group>? GroupUpdated;
     }
     public class CameraEventArgs : EventArgs
     {
@@ -250,7 +264,7 @@ namespace dotMorten.Unifi
             Start = DateTimeOffset.FromUnixTimeMilliseconds(addDataEvent.Start).ToLocalTime();
             End =  addDataEvent.End.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(addDataEvent.End.Value).ToLocalTime() : null;
             Score = addDataEvent.Score;
-            SmartDetectTypes = addDataEvent.SmartDetectTypes.ToArray();
+            SmartDetectTypes = addDataEvent.SmartDetectTypes?.ToArray() ?? new string[] { };
         }
 
         public int Score { get; }

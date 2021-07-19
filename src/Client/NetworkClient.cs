@@ -22,11 +22,11 @@ namespace dotMorten.Unifi
         {
         }
 
-        protected override Task<Uri> OnSigninComplete()
+        protected override Uri GetWebSocketUri()
         {
-            return Task.FromResult(new Uri($"wss://{HostName}/proxy/network/wss/s/default/events"));
+            return new Uri($"wss://{HostName}/proxy/network/wss/s/default/events");
         }
-        
+
         protected override void ProcessWebSocketMessage(WebSocketMessageType type, byte[] buffer, int count)
         {
             if (type == WebSocketMessageType.Text)

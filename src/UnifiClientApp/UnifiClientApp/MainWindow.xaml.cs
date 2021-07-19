@@ -1,22 +1,10 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 
-// To learn more about WinUI, the WinUI project structure,
-// and more about our project templates, see: http://aka.ms/winui-project-info.
 
 namespace UnifiClientApp
 {
@@ -31,6 +19,14 @@ namespace UnifiClientApp
             this.InitializeComponent();
             if(Windows.Storage.ApplicationData.Current.LocalSettings.Containers.ContainsKey("credentials"))
             {
+                var container = Windows.Storage.ApplicationData.Current.LocalSettings.Containers["credentials"].Values;
+                if (container.ContainsKey("hostname"))
+                    tbHostname.Text = (string)container["hostname"];
+                if (container.ContainsKey("username"))
+                    tbUsername.Text = (string)container["username"];
+                if (container.ContainsKey("password"))
+                    pwdBox.Password = (string)container["password"];
+                if (container.ContainsKey("cookie") && container.ContainsKey("token") && container.ContainsKey("hostname"))
                 AutoSignin();
             }
         }
@@ -38,16 +34,16 @@ namespace UnifiClientApp
         private async void AutoSignin()
         {
             signinArea.Visibility = Visibility.Collapsed;
+            var container = Windows.Storage.ApplicationData.Current.LocalSettings.CreateContainer("credentials", Windows.Storage.ApplicationDataCreateDisposition.Always);
             try
             {
-                var container = Windows.Storage.ApplicationData.Current.LocalSettings.CreateContainer("credentials", Windows.Storage.ApplicationDataCreateDisposition.Always);
-
                 var client = await dotMorten.Unifi.ProtectClient.SigninWithToken(
                     (string)container.Values["hostname"], (string)container.Values["cookie"],
                     (string)container.Values["token"], (bool)container.Values["ignoreSsl"]);
                 InitClient(client);
             }
-            catch {
+            catch
+            {
                 signinArea.Visibility = Visibility.Visible;
             }
         }
@@ -94,8 +90,17 @@ namespace UnifiClientApp
             protectClient.Ring += ProtectClient_Ring;
             protectClient.Motion += ProtectClient_Motion;
             protectClient.SmartDetectZone += ProtectClient_SmartDetectZone;
+            protectClient.Disconnected += ProtectClient_Disconnected;
             status.Text = $"Connected to '{client.HostName}'\nFound {client.System.Cameras.Count} cameras:\n" +
                 string.Join("", client.System.Cameras.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n"));
+        }
+
+        private void ProtectClient_Disconnected(object sender, EventArgs e)
+        {
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+            {
+                status.Text += "Disconnected\n";
+            });
         }
 
         private void ProtectClient_SmartDetectZone(object sender, dotMorten.Unifi.CameraEventArgs e)
@@ -103,7 +108,7 @@ namespace UnifiClientApp
             Debug.WriteLine($"{e.SmartDetectTypes[0]} detected on camera '{e.Camera.Name}'");
             DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
-                status.Text += $"{DateTimeOffset.Now.ToString()} {e.SmartDetectTypes[0]} detected on camera '{e.Camera.Name}'\n";
+                status.Text += $"{DateTimeOffset.Now} {e.SmartDetectTypes[0]} detected on camera '{e.Camera.Name}'\n";
             });
         }
 
@@ -112,7 +117,7 @@ namespace UnifiClientApp
             Debug.WriteLine($"Motion detected on camera '{e.Camera.Name}'");
             DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
-                status.Text += $"{DateTimeOffset.Now.ToString()} Motion detected on camera '{e.Camera.Name}'\n";
+                status.Text += $"{DateTimeOffset.Now} Motion detected on camera '{e.Camera.Name}'\n";
             });
         }
 
@@ -121,7 +126,7 @@ namespace UnifiClientApp
             Debug.WriteLine($"Ring detected on camera '{e.Camera.Name}'");
             DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
-                status.Text += $"{DateTimeOffset.Now.ToString()} Ring detected on camera '{e.Camera.Name}'\n";
+                status.Text += $"{DateTimeOffset.Now} Ring detected on camera '{e.Camera.Name}'\n";
             });
         }
     }
