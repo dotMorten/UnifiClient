@@ -256,6 +256,7 @@ namespace dotMorten.Unifi
         /// </summary>
         public event EventHandler<Group>? GroupUpdated;
     }
+
     public class CameraEventArgs : EventArgs
     {
         internal CameraEventArgs(AddDataFrame addDataEvent, Camera camera)
@@ -265,8 +266,9 @@ namespace dotMorten.Unifi
             End =  addDataEvent.End.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(addDataEvent.End.Value).ToLocalTime() : null;
             Score = addDataEvent.Score;
             SmartDetectTypes = addDataEvent.SmartDetectTypes?.ToArray() ?? new string[] { };
+            Id = addDataEvent.Id!;
         }
-
+        public string Id { get; }
         public int Score { get; }
         public string[] SmartDetectTypes { get; }
         public Camera Camera { get; }

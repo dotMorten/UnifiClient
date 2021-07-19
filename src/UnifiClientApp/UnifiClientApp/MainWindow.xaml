@@ -8,6 +8,12 @@
     mc:Ignorable="d">
 
     <Grid x:Name="LayoutRoot">
+        <Grid.Resources>
+            <FontIconSource x:Name="Ring" FontFamily="Segoe MDL2 Assets" Glyph="&#xEA8F;" />
+            <FontIconSource x:Name="Motion" FontFamily="Segoe MDL2 Assets" Glyph="&#xE726;" />
+            <FontIconSource x:Name="Person" FontFamily="Segoe MDL2 Assets" Glyph="&#xE77B;" />
+            <FontIconSource x:Name="Vehicle" FontFamily="Segoe MDL2 Assets" Glyph="&#xE804;" />
+        </Grid.Resources>
         <TextBox x:Name="status" AcceptsReturn="true" />
         <Grid x:Name="signinArea" Background="White">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="300" BorderBrush="Black" BorderThickness="1" Padding="20">
@@ -17,7 +23,18 @@
                 <Button Click="SignIn_Click">Sign In</Button>
                 <ProgressRing x:Name="progress" IsActive="false" />
             </StackPanel>
+
+
+            <TeachingTip x:Name="notificationPopup"                   
+	         PlacementMargin="10" PreferredPlacement="TopRight"> 
+                <TeachingTip.IconSource>
+                    <SymbolIconSource Symbol="Contact" x:Name="notificationSymbol" />
+                </TeachingTip.IconSource>
+                <Image x:Name="notificationImageSource" />
+            </TeachingTip>
         </Grid>
-        
+
+        <Border Opacity="0" Width="1" Height="1" Margin="20" HorizontalAlignment="Right" VerticalAlignment="Top"
+                x:Name="PopupAnchor" IsHitTestVisible="False"/>
     </Grid>
 </Window>

@@ -77,6 +77,7 @@ namespace dotMorten.Unifi
             await socket.ConnectAsync(GetWebSocketUri(), CancellationToken.None).ConfigureAwait(false);
             IsOpen = true;
             _socketProcessTask = ProcessWebSocket(socket);
+            Debug.WriteLine("WebSocket connected");
         }
 
         private async Task ReconnectWebSocketAsync()
@@ -129,8 +130,9 @@ namespace dotMorten.Unifi
                 {
                     result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
                 }
-                catch(WebSocketException)
+                catch(WebSocketException ex)
                 {
+                    Debug.WriteLine($"Socket exception: {ex.Message}\n\tAttempting reconnect");
                     _ = ReconnectWebSocketAsync();
                     return;
                 }
