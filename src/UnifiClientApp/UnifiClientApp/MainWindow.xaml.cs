@@ -138,7 +138,7 @@ namespace UnifiClientApp
 
         private async void ShowCamera(Camera camera, string title, string subtitle, string eventId, string resourceId)
         {
-            notificationPopup.IconSource = LayoutRoot.Resources.ContainsKey(resourceId) ? LayoutRoot.Resources[resourceId] as IconSource ? null;
+            notificationPopup.IconSource = LayoutRoot.Resources.ContainsKey(resourceId) ? LayoutRoot.Resources[resourceId] as IconSource : null;
             using var c = await protectClient.GetCameraSnapshot(camera, false);
             BitmapImage img = new BitmapImage();
             var ms = new MemoryStream();
