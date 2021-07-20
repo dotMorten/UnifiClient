@@ -18,18 +18,8 @@ namespace dotMorten.Unifi
         private readonly string? _password;
         
         private Task? _socketProcessTask;
-
-        public string? CsftToken { get; private set; }
-        
-        public string? Cookie { get; private set; }
         
         private protected HttpClient HttpClient { get; }
-
-        protected Client(string hostname, bool ignoreSslErrors, string cookie, string csftToken) : this(hostname, null!, null!, ignoreSslErrors)
-        {
-            Cookie = cookie;
-            CsftToken = csftToken;
-        }
 
         protected Client(string hostname, string username, string password, bool ignoreSslErrors)
         {
@@ -50,30 +40,27 @@ namespace dotMorten.Unifi
 
         public virtual async Task OpenAsync(CancellationToken cancellationToken)
         {
-            if (CsftToken is null && Cookie is null)
-            {
-                var jsonCredentials = $"{{\"password\":\"{_password}\", \"username\":\"{_username}\" }}";
-                var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", new StringContent(jsonCredentials, Encoding.UTF8, "application/json")).ConfigureAwait(false);
-                loginResult.EnsureSuccessStatusCode();
+            var jsonCredentials = $"{{\"password\":\"{_password}\", \"username\":\"{_username}\" }}";
+            var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", new StringContent(jsonCredentials, Encoding.UTF8, "application/json")).ConfigureAwait(false);
+            loginResult.EnsureSuccessStatusCode();
 
-                CsftToken = loginResult.Headers.GetValues("X-CSRF-Token").FirstOrDefault();
-                Cookie = loginResult.Headers.GetValues("Set-Cookie").FirstOrDefault();
-            }
-            HttpClient.DefaultRequestHeaders.Add("Cookie", Cookie);
-            HttpClient.DefaultRequestHeaders.Add("X-CSRF-Token", CsftToken);
+            var csftToken = loginResult.Headers.GetValues("X-CSRF-Token").First();
+            var cookie = loginResult.Headers.GetValues("Set-Cookie").First();
+            HttpClient.DefaultRequestHeaders.Add("Cookie", cookie);
+            HttpClient.DefaultRequestHeaders.Add("X-CSRF-Token", csftToken);
 
             await OnSignInCompleteAsync();
-            await ConnectWebSocketAsync();
+            await ConnectWebSocketAsync(cookie, csftToken);
             IsOpen = true;
         }
 
-        private async Task ConnectWebSocketAsync()
+        private async Task ConnectWebSocketAsync(string cookie, string token)
         { 
             ClientWebSocket socket = new ClientWebSocket();
             if (IgnoreSslErrors)
                 socket.Options.RemoteCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
-            socket.Options.SetRequestHeader("Cookie", Cookie);
-            socket.Options.SetRequestHeader("X-CSRF-Token", CsftToken);
+            socket.Options.SetRequestHeader("Cookie", cookie);
+            socket.Options.SetRequestHeader("X-CSRF-Token", token);
             await socket.ConnectAsync(GetWebSocketUri(), CancellationToken.None).ConfigureAwait(false);
             IsOpen = true;
             _socketProcessTask = ProcessWebSocket(socket);
@@ -86,14 +73,12 @@ namespace dotMorten.Unifi
             {
                 if (_socketProcessTask != null)
                     await _socketProcessTask;
-                await ConnectWebSocketAsync();
+                await OpenAsync(CancellationToken.None);
             }
             catch
             {
-
                 Disconnected?.Invoke(this, EventArgs.Empty);
                 await CloseAsync();
-                return;
             }
         }
 

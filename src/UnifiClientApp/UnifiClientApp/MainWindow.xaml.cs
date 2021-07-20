@@ -23,14 +23,13 @@ namespace UnifiClientApp
             if(Windows.Storage.ApplicationData.Current.LocalSettings.Containers.ContainsKey("credentials"))
             {
                 var container = Windows.Storage.ApplicationData.Current.LocalSettings.Containers["credentials"].Values;
-                if (container.ContainsKey("hostname"))
+                if (container.ContainsKey("hostname") && container.ContainsKey("username") && container.ContainsKey("password"))
+                {
                     tbHostname.Text = (string)container["hostname"];
-                if (container.ContainsKey("username"))
                     tbUsername.Text = (string)container["username"];
-                if (container.ContainsKey("password"))
                     pwdBox.Password = (string)container["password"];
-                if (container.ContainsKey("cookie") && container.ContainsKey("token") && container.ContainsKey("hostname"))
-                AutoSignin();
+                    AutoSignin();
+                }
             }
         }
 
@@ -40,9 +39,8 @@ namespace UnifiClientApp
             var container = Windows.Storage.ApplicationData.Current.LocalSettings.CreateContainer("credentials", Windows.Storage.ApplicationDataCreateDisposition.Always);
             try
             {
-                var client = await dotMorten.Unifi.ProtectClient.SigninWithToken(
-                    (string)container.Values["hostname"], (string)container.Values["cookie"],
-                    (string)container.Values["token"], (bool)container.Values["ignoreSsl"]);
+                var client = new dotMorten.Unifi.ProtectClient((string)container.Values["hostname"], (string)container.Values["username"], (string)container.Values["password"], (bool)container.Values["ignoreSsl"]);
+                await client.OpenAsync(CancellationToken.None);
                 InitClient(client);
             }
             catch
@@ -63,10 +61,9 @@ namespace UnifiClientApp
                 await protectClient.OpenAsync(CancellationToken.None);
                 var container = Windows.Storage.ApplicationData.Current.LocalSettings.CreateContainer("credentials", Windows.Storage.ApplicationDataCreateDisposition.Always);
                 container.Values["hostname"] = protectClient.HostName;
-                container.Values["username"] = tbUsername.Text;
                 container.Values["ignoreSsl"] = protectClient.IgnoreSslErrors;
-                container.Values["cookie"] = protectClient.Cookie;
-                container.Values["token"] = protectClient.CsftToken;
+                container.Values["username"] = tbUsername.Text;
+                container.Values["password"] = pwdBox.Password;
                 signinArea.Visibility = Visibility.Collapsed;
                 InitClient(protectClient);
             }
@@ -90,13 +87,24 @@ namespace UnifiClientApp
 
         private void InitClient(dotMorten.Unifi.ProtectClient client)
         {
-            protectClient = client;
-            protectClient.Ring += ProtectClient_Ring;
-            protectClient.Motion += ProtectClient_Motion;
-            protectClient.SmartDetectZone += ProtectClient_SmartDetectZone;
-            protectClient.Disconnected += ProtectClient_Disconnected;
-            status.Text = $"Connected to '{client.HostName}'\nFound {client.System.Cameras.Count} cameras:\n" +
-                string.Join("", client.System.Cameras.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n"));
+            if(protectClient != null)
+            {
+                protectClient.Ring -= ProtectClient_Ring;
+                protectClient.Motion -= ProtectClient_Motion;
+                protectClient.SmartDetectZone -= ProtectClient_SmartDetectZone;
+                protectClient.Disconnected -= ProtectClient_Disconnected;
+                protectClient = null;
+            }
+            if (client != null)
+            {
+                protectClient = client;
+                protectClient.Ring += ProtectClient_Ring;
+                protectClient.Motion += ProtectClient_Motion;
+                protectClient.SmartDetectZone += ProtectClient_SmartDetectZone;
+                protectClient.Disconnected += ProtectClient_Disconnected;
+                status.Text = $"Connected to '{client.HostName}'\nFound {client.System.Cameras.Count} cameras:\n" +
+                    string.Join("", client.System.Cameras.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n"));
+            }
         }
 
         private void ProtectClient_Disconnected(object sender, EventArgs e)

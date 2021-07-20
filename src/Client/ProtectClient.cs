@@ -18,16 +18,6 @@ namespace dotMorten.Unifi
         private const string bootstrapUrl = "/proxy/protect/api/bootstrap";
         private const int UPDATE_PACKET_HEADER_SIZE = 8; //  Update realtime API packet header size, in bytes.
 
-        public static async Task<ProtectClient> SigninWithToken(string hostname, string cookie, string csftToken, bool ignoreSslErrors)
-        {
-            var client = new ProtectClient(hostname, ignoreSslErrors, cookie, csftToken);
-            await client.OpenAsync(CancellationToken.None).ConfigureAwait(false);
-            return client;
-        }
-
-        private ProtectClient(string hostname, bool ignoreSslErrors, string cookie, string csftToken) : base(hostname, ignoreSslErrors, cookie, csftToken)
-        {
-        }
         public ProtectClient(string hostname, string username, string password, bool ignoreSslErrors) : base(hostname, username, password, ignoreSslErrors)
         {
         }
