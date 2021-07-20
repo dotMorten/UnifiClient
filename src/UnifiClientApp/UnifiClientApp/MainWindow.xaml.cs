@@ -142,14 +142,14 @@ namespace UnifiClientApp
             DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
                 status.Text += $"{DateTimeOffset.Now} Ring detected on camera '{e.Camera.Name}'\n";
-                ShowCamera(e.Camera, e.Camera.Name, $"Ring detected", e.Id, "Ring");
+                ShowCamera(e.Camera, e.Camera.Name, $"Ring detected", e.Id, "Ring", true);
             });
         }
 
-        private async void ShowCamera(Camera camera, string title, string subtitle, string eventId, string resourceId)
+        private async void ShowCamera(Camera camera, string title, string subtitle, string eventId, string resourceId, bool isRing = false)
         {
             notificationPopup.IconSource = LayoutRoot.Resources.ContainsKey(resourceId) ? LayoutRoot.Resources[resourceId] as IconSource : null;
-            using var c = await protectClient.GetCameraSnapshot(camera, false);
+            using var c = await protectClient.GetCameraSnapshot(camera, true);
             BitmapImage img = new BitmapImage();
             var ms = new MemoryStream();
             c.CopyTo(ms);
@@ -169,7 +169,7 @@ namespace UnifiClientApp
                 ms.CopyTo(f);
             }
 
-            string toastXmlString = @"<toast><visual><binding template=""ToastGeneric""><text hint-maxLines=""1"" /><text /><image /></binding></visual></toast>";
+            string toastXmlString = @"<toast><visual><binding template=""ToastGeneric""><text hint-maxLines=""1"" /><text /><image /></binding></visual><audio /></toast>";
             var toastXml = new Windows.Data.Xml.Dom.XmlDocument();
             toastXml.LoadXml(toastXmlString);
             var stringElements = toastXml.GetElementsByTagName("text");
@@ -178,13 +178,23 @@ namespace UnifiClientApp
             String imagePath = "file:///" + p.Replace('\\', '/');
             var imageElements = toastXml.GetElementsByTagName("image");
             ((Windows.Data.Xml.Dom.XmlElement)imageElements[0]).SetAttribute("src", imagePath);
+            if(isRing)
+            {
+                var audio = toastXml.GetElementsByTagName("audio");
+                ((Windows.Data.Xml.Dom.XmlElement)audio[0]).SetAttribute("src", "ms-appx:///Sounds/Chime.wav");
+            }
             ToastNotification toast = new ToastNotification(toastXml);
+            if (isRing)
+                toast.Priority = ToastNotificationPriority.High;
             ToastNotificationManager.GetDefault().CreateToastNotifier().Show(toast);
             
-
             await Task.Delay(5000);
-            if (notificationPopup.Tag as string == eventId)
-                notificationPopup.IsOpen = false;
+            try
+            {
+                if (notificationPopup.Tag as string == eventId)
+                    notificationPopup.IsOpen = false;
+            }
+            catch { } // throws during shutdown
             File.Delete(p);
 
 
