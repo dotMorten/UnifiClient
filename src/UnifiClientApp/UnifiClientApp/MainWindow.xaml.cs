@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.UI.Notifications;
 
 namespace UnifiClientApp
 {
@@ -18,6 +19,7 @@ namespace UnifiClientApp
         public MainWindow()
         {
             this.InitializeComponent();
+            this.Title = "Unifi Protect";
             if(Windows.Storage.ApplicationData.Current.LocalSettings.Containers.ContainsKey("credentials"))
             {
                 var container = Windows.Storage.ApplicationData.Current.LocalSettings.Containers["credentials"].Values;
@@ -150,9 +152,34 @@ namespace UnifiClientApp
             notificationPopup.Title = title;
             notificationPopup.Subtitle = subtitle;
             notificationPopup.IsOpen = true;
+
+
+            var p = Path.GetTempFileName();
+            using (var f = File.OpenWrite(p))
+            {
+                ms.Seek(0, SeekOrigin.Begin);
+                ms.CopyTo(f);
+            }
+
+            string toastXmlString = @"<toast><visual><binding template=""ToastGeneric""><text hint-maxLines=""1"" /><text /><image /></binding></visual></toast>";
+            var toastXml = new Windows.Data.Xml.Dom.XmlDocument();
+            toastXml.LoadXml(toastXmlString);
+            var stringElements = toastXml.GetElementsByTagName("text");
+            stringElements[0].AppendChild(toastXml.CreateTextNode(title));
+            stringElements[1].AppendChild(toastXml.CreateTextNode(subtitle));
+            String imagePath = "file:///" + p.Replace('\\', '/');
+            var imageElements = toastXml.GetElementsByTagName("image");
+            ((Windows.Data.Xml.Dom.XmlElement)imageElements[0]).SetAttribute("src", imagePath);
+            ToastNotification toast = new ToastNotification(toastXml);
+            ToastNotificationManager.GetDefault().CreateToastNotifier().Show(toast);
+            
+
             await Task.Delay(5000);
             if (notificationPopup.Tag as string == eventId)
                 notificationPopup.IsOpen = false;
+            File.Delete(p);
+
+
         }
     }
 }
