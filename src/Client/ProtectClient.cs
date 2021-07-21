@@ -46,9 +46,33 @@ namespace dotMorten.Unifi
         public Task<Stream> GetCameraSnapshot(Camera camera, bool useProxy)
         {
             if (useProxy)
-                return HttpClient.GetStreamAsync($"https://{HostName}/proxy/protect/api/cameras/{camera.Id}/snapshot");
+                return GetStreamAsync($"https://{HostName}/proxy/protect/api/cameras/{camera.Id}/snapshot");
             else
                 return HttpClient.GetStreamAsync($"http://{camera.Host}/snap.jpeg");
+        }
+
+        private async Task<Stream> GetStreamAsync(string url)
+        {
+            var content = await GetAsync(url).ConfigureAwait(false);
+            return await content.ReadAsStreamAsync().ConfigureAwait(false);
+
+        }
+        private async Task<String> GetStringAsync(string url)
+        {
+            var content = await GetAsync(url).ConfigureAwait(false);
+            return await content.ReadAsStringAsync().ConfigureAwait(false);
+        }
+
+        private async Task<HttpContent> GetAsync(string url)
+        {
+            var response = await HttpClient.GetAsync(url).ConfigureAwait(false);
+            if (response.StatusCode == global::System.Net.HttpStatusCode.Unauthorized)
+            {
+                // Sign in again
+                await SignIn();
+                response = await HttpClient.GetAsync(url);
+            }
+            return response.EnsureSuccessStatusCode().Content;
         }
 
         protected override void ProcessWebSocketMessage(WebSocketMessageType type, byte[] buffer, int count)

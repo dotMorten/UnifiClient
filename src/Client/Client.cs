@@ -18,7 +18,8 @@ namespace dotMorten.Unifi
         private readonly string? _password;
         
         private Task? _socketProcessTask;
-        
+        private ClientWebSocket? socket;
+
         private protected HttpClient HttpClient { get; }
 
         protected Client(string hostname, string username, string password, bool ignoreSslErrors)
@@ -29,38 +30,60 @@ namespace dotMorten.Unifi
             IgnoreSslErrors = ignoreSslErrors;
 
             var httpClientHandler = new HttpClientHandler();
-            if (IgnoreSslErrors)
-                httpClientHandler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => message.RequestUri.Host == HostName;
             HttpClient = new HttpClient(httpClientHandler);
+            if (IgnoreSslErrors)
+            {
+                httpClientHandler.ServerCertificateCustomValidationCallback = (message, cert, chain, sslPolicyErrors) => message.RequestUri.Host == HostName;
+            }
         }
 
         public string HostName { get; }
 
         public bool IgnoreSslErrors { get; }
 
-        public virtual async Task OpenAsync(CancellationToken cancellationToken)
+        public Task OpenAsync(CancellationToken cancellationToken) => OpenAsync(cancellationToken, false);
+        
+        private async Task OpenAsync(CancellationToken cancellationToken, bool reconnect)
+        {
+            if(!reconnect && IsOpen)
+            {
+                return;
+            }
+            await SignIn().ConfigureAwait(false);
+            await OnSignInCompleteAsync().ConfigureAwait(false);
+            await ConnectWebSocketAsync().ConfigureAwait(false);
+            IsOpen = true;
+        }
+
+        protected async Task SignIn()
         {
             var jsonCredentials = $"{{\"password\":\"{_password}\", \"username\":\"{_username}\" }}";
             var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", new StringContent(jsonCredentials, Encoding.UTF8, "application/json")).ConfigureAwait(false);
             loginResult.EnsureSuccessStatusCode();
 
-            var csftToken = loginResult.Headers.GetValues("X-CSRF-Token").First();
+            var token = loginResult.Headers.GetValues("X-CSRF-Token").First();
             var cookie = loginResult.Headers.GetValues("Set-Cookie").First();
             HttpClient.DefaultRequestHeaders.Add("Cookie", cookie);
-            HttpClient.DefaultRequestHeaders.Add("X-CSRF-Token", csftToken);
-
-            await OnSignInCompleteAsync();
-            await ConnectWebSocketAsync(cookie, csftToken);
-            IsOpen = true;
+            HttpClient.DefaultRequestHeaders.Add("X-CSRF-Token", token);
         }
 
-        private async Task ConnectWebSocketAsync(string cookie, string token)
-        { 
-            ClientWebSocket socket = new ClientWebSocket();
-            if (IgnoreSslErrors)
-                socket.Options.RemoteCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+        private async Task ConnectWebSocketAsync()
+        {
+            if (socket != null && (socket.State != WebSocketState.Closed || socket.State != WebSocketState.None))
+            {
+                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Restarting websocket", CancellationToken.None);
+                socket = null;
+            }
+            socket = new ClientWebSocket();
+            var cookie = HttpClient.DefaultRequestHeaders.GetValues("Cookie").First();
+            var token = HttpClient.DefaultRequestHeaders.GetValues("X-CSRF-Token").First();
             socket.Options.SetRequestHeader("Cookie", cookie);
             socket.Options.SetRequestHeader("X-CSRF-Token", token);
+            if (IgnoreSslErrors)
+            {
+                socket.Options.RemoteCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+            }
+
             await socket.ConnectAsync(GetWebSocketUri(), CancellationToken.None).ConfigureAwait(false);
             IsOpen = true;
             _socketProcessTask = ProcessWebSocket(socket);
@@ -73,7 +96,7 @@ namespace dotMorten.Unifi
             {
                 if (_socketProcessTask != null)
                     await _socketProcessTask;
-                await OpenAsync(CancellationToken.None);
+                await OpenAsync(CancellationToken.None, true);
             }
             catch
             {
@@ -117,7 +140,8 @@ namespace dotMorten.Unifi
                 }
                 catch(WebSocketException ex)
                 {
-                    Debug.WriteLine($"Socket exception: {ex.Message}\n\tAttempting reconnect");
+                    Debug.WriteLine($"Socket exception: {ex.Message} ErrorCode={ex.ErrorCode} WebSocketErrorCode={ex.WebSocketErrorCode} NativeErrorCode={ex.NativeErrorCode}\n\tAttempting reconnect");
+                    socket.Dispose();
                     _ = ReconnectWebSocketAsync();
                     return;
                 }
@@ -137,6 +161,7 @@ namespace dotMorten.Unifi
                     Debug.WriteLine("Failed to decode message: " + ex.Message);
                 }
             }
+            socket.Dispose();
             Disconnected?.Invoke(this, EventArgs.Empty);
         }
 
