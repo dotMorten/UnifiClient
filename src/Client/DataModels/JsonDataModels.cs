@@ -92,8 +92,8 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string TypeIn { get; set; }
         public string BindAddr { get; set; }
         public int BindPort { get; set; }
-        public object FilterAddr { get; set; }
-        public object FilterPort { get; set; }
+        public string FilterAddr { get; set; }
+        public int? FilterPort { get; set; }
         public int Channels { get; set; }
         public int SamplingRate { get; set; }
         public int BitsPerSample { get; set; }
@@ -148,6 +148,14 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string Color { get; set; }
         public List<List<double>> Points { get; set; }
         public int Sensitivity { get; set; }
+    }
+
+    public class PrivacyZone
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Color { get; set; }
+        public List<List<double>> Points { get; set; }
     }
 
     public class SmartDetectZone
@@ -313,11 +321,11 @@ namespace dotMorten.Unifi.Protect.DataModels
 
     public class WifiConnectionState
     {
-        public object Channel { get; set; }
-        public object Frequency { get; set; }
-        public object PhyRate { get; set; }
-        public object SignalQuality { get; set; }
-        public object SignalStrength { get; set; }
+        public int? Channel { get; set; }
+        public int? Frequency { get; set; }
+        public int? PhyRate { get; set; }
+        public int? SignalQuality { get; set; }
+        public int? SignalStrength { get; set; }
     }
 
     public class Camera : ProtectNetworkDevice
@@ -372,7 +380,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public SmartDetectSettings SmartDetectSettings { get; set; }
         public object RecordingSchedule { get; set; }
         public List<MotionZone> MotionZones { get; set; }
-        public List<object> PrivacyZones { get; set; }
+        public List<PrivacyZone> PrivacyZones { get; set; }
         public List<SmartDetectZone> SmartDetectZones { get; set; }
         public List<object> SmartDetectLines { get; set; }
         public Stats Stats { get; set; }
@@ -670,6 +678,66 @@ namespace dotMorten.Unifi.Protect.DataModels
         public MaxCameraCapacity MaxCameraCapacity { get; set; }
     }
 
+    public class LightDeviceSettings
+    {
+        public bool IsIndicatorEnabled { get; set; }
+        public int LedLevel { get; set; }
+        public string LuxSensitivity { get; set; }
+        public int PirDuration { get; set; }
+        public int PirSensitivity { get; set; }
+    }
+
+    public class LightOnSettings
+    {
+        public bool IsLedForceOn { get; set; }
+    }
+
+    public class LightModeSettings
+    {
+        public string Mode { get; set; }
+        public string EnableAt { get; set; }
+    }
+
+    public class Light
+    {
+        public string Mac { get; set; }
+        public string Host { get; set; }
+        public string ConnectionHost { get; set; }
+        public string Type { get; set; }
+        public string Name { get; set; }
+        public long UpSince { get; set; }
+        public long LastSeen { get; set; }
+        public long ConnectedSince { get; set; }
+        public string State { get; set; }
+        public object HardwareRevision { get; set; }
+        public string FirmwareVersion { get; set; }
+        public string LatestFirmwareVersion { get; set; }
+        public string FirmwareBuild { get; set; }
+        public bool IsUpdating { get; set; }
+        public bool IsAdopting { get; set; }
+        public bool IsAdopted { get; set; }
+        public bool IsAdoptedByOther { get; set; }
+        public bool IsProvisioned { get; set; }
+        public bool IsRebooting { get; set; }
+        public bool IsSshEnabled { get; set; }
+        public bool CanAdopt { get; set; }
+        public bool IsAttemptingToConnect { get; set; }
+        public bool IsPirMotionDetected { get; set; }
+        public object LastMotion { get; set; }
+        public bool IsDark { get; set; }
+        public bool IsLightOn { get; set; }
+        public bool IsLocating { get; set; }
+        public WiredConnectionState WiredConnectionState { get; set; }
+        public LightDeviceSettings LightDeviceSettings { get; set; }
+        public LightOnSettings LightOnSettings { get; set; }
+        public LightModeSettings LightModeSettings { get; set; }
+        public string Camera { get; set; }
+        public string Id { get; set; }
+        public bool IsConnected { get; set; }
+        public bool IsCameraPaired { get; set; }
+        public string ModelKey { get; set; }
+    }
+
     public class Bridge : ProtectNetworkDevice
     {
         public string ConnectionHost { get; set; }
@@ -721,7 +789,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string LastUpdateId { get; set; }
         public List<object> Viewers { get; set; }
         public List<object> Displays { get; set; }
-        public List<object> Lights { get; set; }
+        public List<Light> Lights { get; set; }
         public List<Bridge> Bridges { get; set; }
         public List<object> Sensors { get; set; }
         public List<object> Doorlocks { get; set; }

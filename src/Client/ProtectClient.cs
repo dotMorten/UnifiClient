@@ -133,6 +133,17 @@ namespace dotMorten.Unifi
                                 if (!string.IsNullOrEmpty(action.NewUpdateId))
                                     System.LastUpdateId = action.NewUpdateId;
                             }
+                            else if (action.ModelKey == "light")
+                            {
+                                var light = System.Lights.Where(c => c.Id == action.Id).FirstOrDefault();
+                                if (light != null)
+                                {
+                                    JsonConvert.PopulateObject(json, light);
+                                    LightUpdated?.Invoke(this, light);
+                                }
+                                if (!string.IsNullOrEmpty(action.NewUpdateId))
+                                    System.LastUpdateId = action.NewUpdateId;
+                            }
                             else if (action.ModelKey == "bridge")
                             {
                                 var bridge = System.Bridges.Where(c => c.Id == action.Id).FirstOrDefault();
@@ -244,7 +255,12 @@ namespace dotMorten.Unifi
         /// Raised when the properties of a camera is updated.
         /// </summary>
         public event EventHandler<Camera>? CameraUpdated;
- 
+
+        /// <summary>
+        /// Raised when the properties of a light is updated.
+        /// </summary>
+        public event EventHandler<Light>? LightUpdated;
+
         /// <summary>
         /// Raised when the properties of a user is updated.
         /// </summary>
