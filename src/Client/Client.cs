@@ -13,10 +13,7 @@ namespace dotMorten.Unifi
 {
     public abstract class Client : IDisposable
     {
-        private readonly string? _username;
-
-        private readonly string? _password;
-        
+        private readonly byte[] _credentials;
         private Task? _socketProcessTask;
         private ClientWebSocket? socket;
 
@@ -25,8 +22,7 @@ namespace dotMorten.Unifi
         protected Client(string hostname, string username, string password, bool ignoreSslErrors)
         {
             HostName = hostname;
-            _username = username;
-            _password = password;
+            _credentials = Encoding.UTF8.GetBytes($"{{\"password\":\"{password}\", \"username\":\"{username}\" }}");
             IgnoreSslErrors = ignoreSslErrors;
 
             var httpClientHandler = new HttpClientHandler();
@@ -52,13 +48,15 @@ namespace dotMorten.Unifi
             await SignIn().ConfigureAwait(false);
             await OnSignInCompleteAsync().ConfigureAwait(false);
             await ConnectWebSocketAsync().ConfigureAwait(false);
-            IsOpen = true;
         }
 
         protected async Task SignIn()
         {
-            var jsonCredentials = $"{{\"password\":\"{_password}\", \"username\":\"{_username}\" }}";
-            var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", new StringContent(jsonCredentials, Encoding.UTF8, "application/json")).ConfigureAwait(false);
+            HttpClient.DefaultRequestHeaders.Remove("Cookie");
+            HttpClient.DefaultRequestHeaders.Remove("X-CSRF-Token");
+            var content = new ByteArrayContent(_credentials);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+            var loginResult = await HttpClient.PostAsync($"https://{HostName}/api/auth/login", content).ConfigureAwait(false);
             loginResult.EnsureSuccessStatusCode();
 
             var token = loginResult.Headers.GetValues("X-CSRF-Token").First();
@@ -72,6 +70,7 @@ namespace dotMorten.Unifi
             if (socket != null && (socket.State != WebSocketState.Closed || socket.State != WebSocketState.None))
             {
                 await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Restarting websocket", CancellationToken.None);
+                socket.Dispose();
                 socket = null;
             }
             socket = new ClientWebSocket();
