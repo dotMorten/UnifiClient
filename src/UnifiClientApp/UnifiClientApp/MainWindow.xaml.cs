@@ -102,9 +102,19 @@ namespace UnifiClientApp
                 protectClient.Motion += ProtectClient_Motion;
                 protectClient.SmartDetectZone += ProtectClient_SmartDetectZone;
                 protectClient.Disconnected += ProtectClient_Disconnected;
+                protectClient.LightIsOnChanged += ProtectClient_LightIsOnChanged;
                 status.Text = $"Connected to '{client.HostName}'\nFound {client.System.Cameras.Count} cameras:\n" +
-                    string.Join("", client.System.Cameras.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n"));
+                    string.Join("", client.System.Cameras.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n")) + $"Found {client.System.Lights.Count} lights: \n" +
+                    string.Join("", client.System.Lights.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n"));
             }
+        }
+
+        private void ProtectClient_LightIsOnChanged(object sender, Light e)
+        {
+            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+            {
+                status.Text += $"Light {e.Name} turned {(e.IsLightOn ? "on" : "off")}.\n";
+            });
         }
 
         private void ProtectClient_Disconnected(object sender, EventArgs e)

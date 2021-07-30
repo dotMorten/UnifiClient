@@ -138,8 +138,11 @@ namespace dotMorten.Unifi
                                 var light = System.Lights.Where(c => c.Id == action.Id).FirstOrDefault();
                                 if (light != null)
                                 {
+                                    var isOn = light.IsLightOn;
                                     JsonConvert.PopulateObject(json, light);
                                     LightUpdated?.Invoke(this, light);
+                                    if (light.IsLightOn != isOn)
+                                        LightIsOnChanged?.Invoke(this, light);
                                 }
                                 if (!string.IsNullOrEmpty(action.NewUpdateId))
                                     System.LastUpdateId = action.NewUpdateId;
@@ -260,6 +263,12 @@ namespace dotMorten.Unifi
         /// Raised when the properties of a light is updated.
         /// </summary>
         public event EventHandler<Light>? LightUpdated;
+
+
+        /// <summary>
+        /// Raised when a light is turned on or off.
+        /// </summary>
+        public event EventHandler<Light>? LightIsOnChanged;        
 
         /// <summary>
         /// Raised when the properties of a user is updated.
