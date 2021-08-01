@@ -67,9 +67,10 @@ namespace dotMorten.Unifi
 
         private async Task ConnectWebSocketAsync()
         {
-            if (socket != null && (socket.State != WebSocketState.Closed || socket.State != WebSocketState.None))
+            if (socket != null)
             {
-                await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Restarting websocket", CancellationToken.None);
+                if (socket.State != WebSocketState.Closed && socket.State != WebSocketState.None && socket.State != WebSocketState.Aborted)
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Restarting websocket", CancellationToken.None);
                 socket.Dispose();
                 socket = null;
             }
@@ -97,8 +98,9 @@ namespace dotMorten.Unifi
                     await _socketProcessTask;
                 await OpenAsync(CancellationToken.None, true);
             }
-            catch
+            catch(System.Exception ex)
             {
+                Debug.WriteLine("Failed to reconnect to socket: " + ex.Message);
                 Disconnected?.Invoke(this, EventArgs.Empty);
                 await CloseAsync();
             }
@@ -161,6 +163,7 @@ namespace dotMorten.Unifi
                 }
             }
             socket.Dispose();
+            Debug.WriteLine("WebSocket process exiting");
             Disconnected?.Invoke(this, EventArgs.Empty);
         }
 
