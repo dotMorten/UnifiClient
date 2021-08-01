@@ -113,7 +113,7 @@ namespace UnifiClientApp
         {
             DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
             {
-                status.Text += $"Light {e.Name} turned {(e.IsLightOn ? "on" : "off")}.\n";
+                status.Text += $"{DateTimeOffset.Now} Light '{e.Name}' turned {(e.IsLightOn ? "on" : "off")}.\n";
             });
         }
 
