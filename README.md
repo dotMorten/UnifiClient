@@ -17,7 +17,15 @@ foreach(var camera in client.System.Camera)
 { 
    // Iterate cameras
 }
-client.CameraUpdated += (sender, camera) += Debug.WriteLine($"Properties on {camera.Name} changed");
+client.CameraUpdated += (sender, e) += Debug.WriteLine($"Properties on {e.Camera.Name} changed");
+client.Motion += (sender, e) += Debug.WriteLine($"Motion on {e.Camera.Name} detected");
+client.SmartDetectZone += (sender, e) += Debug.WriteLine($"{e.SmartDetectTypes[0]} detected on {e.Camera.Name}.");
+client.Ring += (sender, e) += Debug.WriteLine("Somebody rang the doorbell.");
+foreach(var light in client.System.Lights)
+{ 
+   // Iterate lights
+}
+client.LightChanged (sender, e) += Debug.WriteLine($"Properties on {e.Light.Name} changed");
 ```
 
 Monitoring network (work in progress):
