@@ -88,10 +88,12 @@ namespace dotMorten.Unifi
             IsOpen = true;
             _socketProcessTask = ProcessWebSocket(socket);
             Debug.WriteLine("WebSocket connected");
+            Connected?.Invoke(this, EventArgs.Empty);
         }
 
         private async Task ReconnectWebSocketAsync()
         {
+            Reconnecting?.Invoke(this, EventArgs.Empty);
             try
             {
                 if (_socketProcessTask != null)
@@ -170,6 +172,8 @@ namespace dotMorten.Unifi
         protected abstract void ProcessWebSocketMessage(WebSocketMessageType messageType, byte[] buffer, int count);
 
         public event EventHandler? Disconnected;
+        public event EventHandler? Reconnecting;
+        public event EventHandler? Connected;
 
         internal static MemoryStream Deflate(byte[] buffer, int start, int count)
         {

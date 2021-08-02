@@ -93,6 +93,9 @@ namespace UnifiClientApp
                 protectClient.Motion -= ProtectClient_Motion;
                 protectClient.SmartDetectZone -= ProtectClient_SmartDetectZone;
                 protectClient.Disconnected -= ProtectClient_Disconnected;
+                protectClient.Reconnecting -= ProtectClient_Reconnecting;
+                protectClient.Connected -= ProtectClient_Connected;
+                protectClient.LightIsOnChanged -= ProtectClient_LightIsOnChanged;
                 protectClient = null;
             }
             if (client != null)
@@ -102,62 +105,67 @@ namespace UnifiClientApp
                 protectClient.Motion += ProtectClient_Motion;
                 protectClient.SmartDetectZone += ProtectClient_SmartDetectZone;
                 protectClient.Disconnected += ProtectClient_Disconnected;
+                protectClient.Reconnecting += ProtectClient_Reconnecting;
+                protectClient.Connected += ProtectClient_Connected;
                 protectClient.LightIsOnChanged += ProtectClient_LightIsOnChanged;
                 status.Text = $"Connected to '{client.HostName}'\nFound {client.System.Cameras.Count} cameras:\n" +
                     string.Join("", client.System.Cameras.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n")) + $"Found {client.System.Lights.Count} lights: \n" +
                     string.Join("", client.System.Lights.Select(c => $" - {c.Name} ({c.Type}){ (c.IsConnected ? "" : " (disconnected)") }\n"));
             }
         }
-
-        private void ProtectClient_LightIsOnChanged(object sender, Light e)
+        private void SetStatus(string text)
         {
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+            if (DispatcherQueue.HasThreadAccess)
+                status.Text += text + "\n";
+            else
             {
-                status.Text += $"{DateTimeOffset.Now} Light '{e.Name}' turned {(e.IsLightOn ? "on" : "off")}.\n";
-            });
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+                {
+                    status.Text += text + "\n";
+                });
+            }
         }
 
-        private void ProtectClient_Disconnected(object sender, EventArgs e)
-        {
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
-            {
-                status.Text += "Disconnected\n";
-            });
-        }
+        private void ProtectClient_Connected(object sender, EventArgs e) => SetStatus($"Connected.");
+
+        private void ProtectClient_Reconnecting(object sender, EventArgs e) => SetStatus($"Connection lost. Reconnecting...");
+
+        private void ProtectClient_LightIsOnChanged(object sender, Light e) => SetStatus($"{DateTimeOffset.Now} Light '{e.Name}' turned {(e.IsLightOn ? "on" : "off")}.");
+
+        private void ProtectClient_Disconnected(object sender, EventArgs e) => SetStatus($"Disconnected.");
 
         private void ProtectClient_SmartDetectZone(object sender, dotMorten.Unifi.CameraEventArgs e)
         {
             var type = e.SmartDetectTypes[0][0].ToString().ToUpper() + e.SmartDetectTypes[0].Substring(1);
             Debug.WriteLine($"{type} detected on camera '{e.Camera.Name}'");
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
-            {
-                status.Text += $"{DateTimeOffset.Now} {type} detected on camera '{e.Camera.Name}'\n";
-                ShowCamera(e.Camera, e.Camera.Name, $"{type} detected", e.Id, type);
-            });
+            SetStatus($"{DateTimeOffset.Now} {type} detected on camera '{e.Camera.Name}'");
+            ShowCamera(e.Camera, e.Camera.Name, $"{type} detected", e.Id, type);
         }
 
         private void ProtectClient_Motion(object sender, dotMorten.Unifi.CameraEventArgs e)
         {
             Debug.WriteLine($"Motion detected on camera '{e.Camera.Name}'");
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
-            {
-                status.Text += $"{DateTimeOffset.Now} Motion detected on camera '{e.Camera.Name}'\n";
-                ShowCamera(e.Camera, e.Camera.Name, $"Motion detected", e.Id, "Motion");
-            });
+            SetStatus($"{DateTimeOffset.Now} Motion detected on camera '{e.Camera.Name}'");
+            ShowCamera(e.Camera, e.Camera.Name, $"Motion detected", e.Id, "Motion");
         }
 
         private void ProtectClient_Ring(object sender, dotMorten.Unifi.CameraEventArgs e)
         {
             Debug.WriteLine($"Ring detected on camera '{e.Camera.Name}'");
-            DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
-            {
-                status.Text += $"{DateTimeOffset.Now} Ring detected on camera '{e.Camera.Name}'\n";
-                ShowCamera(e.Camera, e.Camera.Name, $"Ring detected", e.Id, "Ring", true);
-            });
+            SetStatus($"{DateTimeOffset.Now} Ring detected on camera '{e.Camera.Name}'");
+            ShowCamera(e.Camera, e.Camera.Name, $"Ring detected", e.Id, "Ring", true);
         }
 
         private async void ShowCamera(Camera camera, string title, string subtitle, string eventId, string resourceId, bool isRing = false)
         {
+            if(!DispatcherQueue.HasThreadAccess)
+            {
+                DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
+                {
+                    ShowCamera(camera, title, subtitle, eventId, resourceId, isRing);
+                });
+                return;
+            }
             notificationPopup.IconSource = LayoutRoot.Resources.ContainsKey(resourceId) ? LayoutRoot.Resources[resourceId] as IconSource : null;
             using var c = await protectClient.GetCameraSnapshot(camera, true);
             BitmapImage img = new BitmapImage();
