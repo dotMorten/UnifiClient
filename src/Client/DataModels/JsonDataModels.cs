@@ -640,7 +640,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public long Uptime { get; set; }
         public long LastSeen { get; set; }
         public bool IsUpdating { get; set; }
-        public long LastUpdateAt { get; set; }
+        public long? LastUpdateAt { get; set; }
         public bool IsStation { get; set; }
         public bool EnableAutomaticBackups { get; set; }
         public bool EnableStatsReporting { get; set; }
