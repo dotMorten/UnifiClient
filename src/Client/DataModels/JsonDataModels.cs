@@ -335,7 +335,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string Type { get; set; }
         public long? UpSince { get; set; }
         public object LastSeen { get; set; }
-        public object ConnectedSince { get; set; }
+        public long? ConnectedSince { get; set; }
         public string State { get; set; }
         public string HardwareRevision { get; set; }
         public string FirmwareVersion { get; set; }
@@ -707,7 +707,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string Name { get; set; }
         public long UpSince { get; set; }
         public long LastSeen { get; set; }
-        public long ConnectedSince { get; set; }
+        public long? ConnectedSince { get; set; }
         public string State { get; set; }
         public object HardwareRevision { get; set; }
         public string FirmwareVersion { get; set; }
@@ -744,7 +744,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public string Type { get; set; }
         public long UpSince { get; set; }
         public long LastSeen { get; set; }
-        public long ConnectedSince { get; set; }
+        public long? ConnectedSince { get; set; }
         public string State { get; set; }
         public int HardwareRevision { get; set; }
         public string FirmwareVersion { get; set; }
