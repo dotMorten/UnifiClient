@@ -43,12 +43,20 @@ namespace dotMorten.Unifi
         /// <param name="camera">Camera</param>
         /// <param name="useProxy">Whether to use the controller as a proxy. This image is often cached and more out of date, but doesn't require the camera to have turned snapshots on.</param>
         /// <returns></returns>
-        public Task<Stream> GetCameraSnapshot(Camera camera, bool useProxy)
+        public async Task<Stream> GetCameraSnapshot(Camera camera, bool useProxy)
         {
             if (useProxy)
-                return GetStreamAsync($"https://{HostName}/proxy/protect/api/cameras/{camera.Id}/snapshot");
+                return await GetStreamAsync($"https://{HostName}/proxy/protect/api/cameras/{camera.Id}/snapshot").ConfigureAwait(false);
             else
-                return HttpClient.GetStreamAsync($"http://{camera.Host}/snap.jpeg");
+            {
+                var response = await HttpClient.GetAsync($"http://{camera.Host}/snap.jpeg");
+                if (response.StatusCode == global::System.Net.HttpStatusCode.NotFound)
+                {
+                    await SignIn().ConfigureAwait(false);
+                    response = await HttpClient.GetAsync($"http://{camera.Host}/snap.jpeg").ConfigureAwait(false);
+                }
+                return await response.EnsureSuccessStatusCode().Content.ReadAsStreamAsync().ConfigureAwait(false);
+            }
         }
 
         private async Task<Stream> GetStreamAsync(string url)
