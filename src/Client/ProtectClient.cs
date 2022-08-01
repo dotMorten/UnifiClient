@@ -128,7 +128,7 @@ namespace dotMorten.Unifi
                     var json = Encoding.UTF8.GetString(payload2.GetBuffer(), 0, (int)payload2.Position);
                     if (action != null)
                     {
-                        if (action.Action == "update")
+                        if (action.Action == "update" && System is not null)
                         {
                             if (action.ModelKey == "camera")
                             {
@@ -212,7 +212,7 @@ namespace dotMorten.Unifi
                                 var addDataEvent = JsonConvert.DeserializeObject<AddDataFrame>(json);
                                 if (addDataEvent != null)
                                 {
-                                    var camera = System.Cameras.Where(c => c.Id == addDataEvent.Camera).FirstOrDefault();
+                                    var camera = System?.Cameras.Where(c => c.Id == addDataEvent.Camera).FirstOrDefault();
                                     if (camera != null)
                                     {
                                         if (addDataEvent.Type == "ring")

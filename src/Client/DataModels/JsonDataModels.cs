@@ -350,7 +350,15 @@ namespace dotMorten.Unifi.Protect.DataModels
         public bool? IsSshEnabled { get; set; }
         public bool CanAdopt { get; set; }
         public bool IsAttemptingToConnect { get; set; }
-        public object LastMotion { get; set; }
+        public long? LastMotion { get; set; }
+        public DateTimeOffset? LastMotionDate
+        {
+            get
+            {
+                if (LastMotion is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(LastMotion.Value);
+            }
+        }
         public int MicVolume { get; set; }
         public bool IsMicEnabled { get; set; }
         public bool IsRecording { get; set; }
