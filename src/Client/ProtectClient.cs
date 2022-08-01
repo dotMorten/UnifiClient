@@ -102,12 +102,12 @@ namespace dotMorten.Unifi
                 // Load Action frame
                 var header = UnifiHeader.Parse(br);
                 MemoryStream payload = header.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header.PayloadSize) :
-                     new MemoryStream(buffer, (int)br.BaseStream.Position, header.PayloadSize);
+                     new MemoryStream(buffer, (int)br.BaseStream.Position, header.PayloadSize, writable: false, publiclyVisible: true);
                 // Load Data frame
                 br.BaseStream.Seek(UPDATE_PACKET_HEADER_SIZE + header.PayloadSize, SeekOrigin.Begin);
                 var header2 = UnifiHeader.Parse(br);
                 MemoryStream payload2 = header2.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header2.PayloadSize) :
-                    new MemoryStream(buffer, (int)br.BaseStream.Position, header2.PayloadSize);
+                    new MemoryStream(buffer, (int)br.BaseStream.Position, header2.PayloadSize, writable: false, publiclyVisible: true);
 
                 ActionFrame? action = null;
                 if (header.PayloadFormat == PayloadFormat.Json)
