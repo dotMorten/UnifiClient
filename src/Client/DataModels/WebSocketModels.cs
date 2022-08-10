@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -45,6 +46,11 @@ namespace dotMorten.Unifi.DataModels
         public static ActionFrame? FromJson(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<ActionFrame>(json);
 
         public static ActionFrame? FromJson(byte[] buffer, int index, int count) => Newtonsoft.Json.JsonConvert.DeserializeObject<ActionFrame>(Encoding.UTF8.GetString(buffer, 0, count));
+        public static ActionFrame? FromJson(System.IO.Stream stream)
+        {
+            using var sr = new System.IO.StreamReader(stream);
+            return JsonConvert.DeserializeObject<ActionFrame>(sr.ReadToEnd());
+        }
     }
 
     internal class AddDataFrame

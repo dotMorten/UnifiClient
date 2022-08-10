@@ -79,10 +79,12 @@ namespace dotMorten.Unifi
             var token = HttpClient.DefaultRequestHeaders.GetValues("X-CSRF-Token").First();
             socket.Options.SetRequestHeader("Cookie", cookie);
             socket.Options.SetRequestHeader("X-CSRF-Token", token);
+#if NETSTANDARD2_1
             if (IgnoreSslErrors)
             {
                 socket.Options.RemoteCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
             }
+#endif
 
             await socket.ConnectAsync(GetWebSocketUri(), CancellationToken.None).ConfigureAwait(false);
             IsOpen = true;
@@ -175,14 +177,14 @@ namespace dotMorten.Unifi
         public event EventHandler? Reconnecting;
         public event EventHandler? Connected;
 
-        internal static MemoryStream Deflate(byte[] buffer, int start, int count)
+        internal static Stream Deflate(byte[] buffer, int start, int count)
         {
             using var zippedStream = new MemoryStream(buffer, start, count);
             zippedStream.Seek(2, SeekOrigin.Begin); // Skip past ZLib header
-            using var deflate = new DeflateStream(zippedStream, CompressionMode.Decompress);
-            var payload = new MemoryStream();
-            deflate.CopyTo(payload);
-            return payload;
+            return new DeflateStream(zippedStream, CompressionMode.Decompress);
+            //var payload = new MemoryStream();
+            //deflate.CopyTo(payload);
+            //return payload;
         }
     }
 }

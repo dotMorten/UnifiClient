@@ -167,8 +167,15 @@ namespace UnifiClientApp
                 return;
             }
             notificationPopup.IconSource = LayoutRoot.Resources.ContainsKey(resourceId) ? LayoutRoot.Resources[resourceId] as IconSource : null;
-            using var c = await protectClient.GetCameraSnapshot(camera, true);
             BitmapImage img = new BitmapImage();
+            try
+            {
+                using var c = await protectClient.GetCameraSnapshot(camera, true);
+            }
+            catch(System.Exception ex) { 
+                Debug.WriteLine("Failed to get camera snaphot: " + ex.Message)
+                return; 
+            }
             var ms = new MemoryStream();
             c.CopyTo(ms);
             ms.Seek(0, SeekOrigin.Begin);

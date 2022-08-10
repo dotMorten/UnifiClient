@@ -43,21 +43,99 @@ namespace dotMorten.Unifi
         /// <param name="camera">Camera</param>
         /// <param name="useProxy">Whether to use the controller as a proxy. This image is often cached and more out of date, but doesn't require the camera to have turned snapshots on.</param>
         /// <returns></returns>
-        public async Task<Stream> GetCameraSnapshot(Camera camera, bool useProxy)
+        public Task<Stream> GetCameraSnapshot(Camera camera, bool useProxy)
         {
             if (useProxy)
-                return await GetStreamAsync($"https://{HostName}/proxy/protect/api/cameras/{camera.Id}/snapshot").ConfigureAwait(false);
+                return GetStreamAsync($"https://{HostName}/proxy/protect/api/cameras/{camera.Id}/snapshot");
             else
-            {
-                var response = await HttpClient.GetAsync($"http://{camera.Host}/snap.jpeg");
-                if (response.StatusCode == global::System.Net.HttpStatusCode.NotFound)
-                {
-                    await SignIn().ConfigureAwait(false);
-                    response = await HttpClient.GetAsync($"http://{camera.Host}/snap.jpeg").ConfigureAwait(false);
-                }
-                return await response.EnsureSuccessStatusCode().Content.ReadAsStreamAsync().ConfigureAwait(false);
-            }
+                return HttpClient.GetStreamAsync($"http://{camera.Host}/snap.jpeg");
         }
+        /*
+        public async Task<string> GetCameraLivestream(Camera camera, int channel)
+        {
+            var c = camera.Channels.Where(c => c.Id == channel).FirstOrDefault();
+            if (c is null)
+                throw new ArgumentOutOfRangeException("Channel ID not found in camera");
+
+            //Based on https://github.com/hjdhjd/unifi-protect/blob/main/src/protect-api-livestream.ts
+
+            // Parameters that can be set for the livestream. We allow the modification of a useful subset of these,
+            // though not all of them, in order to simplify the API experience and ensure things always work.
+            //
+            // allowPartialGOP:          Allow partial groups of pictures. This is necessary for a valid fMP4 stream that can be used in realtime.
+            // camera:                   The camera ID of the camera you are trying to livestream.
+            // channel:                  The camera channel to use for this livestream.
+            // extendedVideoMetadata:    Provide extended metadata in the MOOV box when possible.
+            // fragmentDurationMillis:   Length of each fMP4 segment or fragment, in milliseconds.
+            // progressive:              Enable progressive livestreaming.
+            // rebaseTimestampsToZero:   Rebase the timestamps of each segment to zero. Otherwise, timestamps will reflect the controller's default.
+            // requestId:                Name for this particular request. It's optional in practice, and can be any string.
+            // type:                     Container format type. The valid values are fmp4 and UBV (UniFi Video proprietary format).
+            //https://192.168.1.1/proxy/protect/api/ws/livestream?allowPartialGOP&camera=5e50d6070058c803870003ee&channel=0&chunkSize=1024&extendedVideoMetadata&fragmentDurationMillis=100&progressive&rebaseTimestampsToZero=false&requestId=sugvy3rfa&sessionId=6f2ece3a-0bb8-436c-beb0-39d1fa14d27e&type=fmp4
+            Dictionary<string, string> parameters = new Dictionary<string, string>()
+                {
+                  { "allowPartialGOP", "" },
+                  { "camera", camera.Id },
+                  { "channel", channel.ToString() },
+                  { "extendedVideoMetadata", "" },
+                  { "fragmentDurationMillis", "100" }, //milliseconds
+                  { "progressive", "" },
+                  { "rebaseTimestampsToZero", "false" },
+                  { "requestId", Guid.NewGuid().ToString() },
+                  { "type", "fmp4" }
+                };
+            var wssurl = $"https://{HostName}/proxy/protect/api/ws/livestream?" + string.Join("&", parameters.Select(p => p.Key + "=" + Uri.EscapeDataString(p.Value)));
+            var result1 = await GetAsync(wssurl);
+            var json = await result1.ReadAsStringAsync();
+            // {"url":"wss://hostname:7443/ws/livestream?uniqid=ws-requestid_guid"}
+            var endpoint = JsonConvert.DeserializeObject<Endpoint>(json)!;
+
+            var socket = new ClientWebSocket();
+            var cookie = HttpClient.DefaultRequestHeaders.GetValues("Cookie").First();
+            var token = HttpClient.DefaultRequestHeaders.GetValues("X-CSRF-Token").First();
+            socket.Options.SetRequestHeader("Cookie", cookie);
+            socket.Options.SetRequestHeader("X-CSRF-Token", token);
+#if NETSTANDARD2_1
+            if (IgnoreSslErrors)
+            {
+                socket.Options.RemoteCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+            }
+#endif
+            await socket.ConnectAsync(new Uri(endpoint.Url), CancellationToken.None).ConfigureAwait(false);
+            var buffer = new byte[1024 * 256];
+            WebSocketReceiveResult? result = null;
+            while (IsOpen)
+            {
+                try
+                {
+                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (WebSocketException ex)
+                {
+                    Debug.WriteLine($"Socket exception: {ex.Message} ErrorCode={ex.ErrorCode} WebSocketErrorCode={ex.WebSocketErrorCode} NativeErrorCode={ex.NativeErrorCode}\n\tAttempting reconnect");
+                    socket.Dispose();
+                    //_ = ReconnectWebSocketAsync();
+                    break;
+                }
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    Debug.WriteLine("Socket closed");
+                    await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None).ConfigureAwait(false);
+                    //IsOpen = false;
+                    break;
+                }
+                try
+                {
+                    ProcessWebSocketMessage(result.MessageType, buffer, result.Count);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.WriteLine("Failed to decode message: " + ex.Message);
+                }
+            }
+            socket.Dispose();
+            return endpoint.Url;
+        }*/
 
         private async Task<Stream> GetStreamAsync(string url)
         {
@@ -82,7 +160,43 @@ namespace dotMorten.Unifi
             }
             return response.EnsureSuccessStatusCode().Content;
         }
+        public class SectionStream : Stream
+        {
+            byte[] _buffer;
+            int _start;
+            long _position = 0;
+            public SectionStream(byte[] buffer, int start, int length)
+            {
+                Length = Length;
+                _start = start;
+                _buffer = buffer;
+            }
+            public override bool CanRead => true;
 
+            public override bool CanSeek => true;
+
+            public override bool CanWrite => false;
+
+            public override long Length { get; }
+
+            public override long Position { get => _position; set => throw new NotImplementedException(); }
+
+            public override void Flush() { }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                int i;
+                for (i = 0; i < count && _position < _buffer.Length; i++)
+                {
+                    buffer[i + offset] = _buffer[_position++];
+                }
+                return i;
+            }
+
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotImplementedException();
+            public override void SetLength(long value) => throw new NotImplementedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotImplementedException();
+        }
         protected override void ProcessWebSocketMessage(WebSocketMessageType type, byte[] buffer, int count)
         {
             Debug.Assert(System != null);
@@ -101,18 +215,18 @@ namespace dotMorten.Unifi
                 using BinaryReader br = new BinaryReader(new MemoryStream(buffer, 0, count));
                 // Load Action frame
                 var header = UnifiHeader.Parse(br);
-                MemoryStream payload = header.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header.PayloadSize) :
+                using Stream payload = header.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header.PayloadSize) :
                      new MemoryStream(buffer, (int)br.BaseStream.Position, header.PayloadSize, writable: false, publiclyVisible: true);
                 // Load Data frame
                 br.BaseStream.Seek(UPDATE_PACKET_HEADER_SIZE + header.PayloadSize, SeekOrigin.Begin);
                 var header2 = UnifiHeader.Parse(br);
-                MemoryStream payload2 = header2.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header2.PayloadSize) :
+                using Stream payload2 = header2.Deflated ? Deflate(buffer, (int)br.BaseStream.Position, header2.PayloadSize) :
                     new MemoryStream(buffer, (int)br.BaseStream.Position, header2.PayloadSize, writable: false, publiclyVisible: true);
 
                 ActionFrame? action = null;
                 if (header.PayloadFormat == PayloadFormat.Json)
                 {
-                    action = ActionFrame.FromJson(payload.GetBuffer(), 0, (int)payload.Position);
+                    action = ActionFrame.FromJson(payload);
                 }
                 else if (header.PayloadFormat == PayloadFormat.NodeBuffer)
                 {
@@ -120,12 +234,14 @@ namespace dotMorten.Unifi
                 }
                 else if (header.PayloadFormat == PayloadFormat.Utf8String)
                 {
-                    Debug.WriteLine($"\tAction Frame: Utf8String (TODO) = {Encoding.UTF8.GetString(payload.GetBuffer(), 0, (int)payload.Position)}");
+                    Debug.WriteLine($"\tAction Frame: Utf8String (TODO)"); // = {Encoding.UTF8.GetString(payload.GetBuffer(), 0, (int)payload.Length)}");
                 }
 
                 if (header2.PayloadFormat == PayloadFormat.Json)
                 {
-                    var json = Encoding.UTF8.GetString(payload2.GetBuffer(), 0, (int)payload2.Position);
+                    using var sr = new System.IO.StreamReader(payload2);
+                    string json = sr.ReadToEnd();
+                    //var json = Encoding.UTF8.GetString(payload2.GetBuffer(), 0, (int)payload2.Length);
                     if (action != null)
                     {
                         if (action.Action == "update" && System is not null)
@@ -237,11 +353,13 @@ namespace dotMorten.Unifi
                 }
                 else if (header2.PayloadFormat == PayloadFormat.Utf8String)
                 {
-                    Debug.WriteLine($"\tData Frame: Utf8String (TODO) = {Encoding.UTF8.GetString(payload2.GetBuffer(), 0, (int)payload2.Position)}");
+                    using var sr = new System.IO.StreamReader(payload2);
+                    string json = sr.ReadToEnd();
+                    Debug.WriteLine($"\tData Frame: Utf8String (TODO) = {json}");
                 }
             }
         }
-
+        
         /// <summary>
         /// Raised when a smart detect event occurs.
         /// </summary>
