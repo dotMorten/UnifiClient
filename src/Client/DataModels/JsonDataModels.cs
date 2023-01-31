@@ -51,7 +51,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public int Bitrate { get; set; }
         public int MinBitrate { get; set; }
         public int MaxBitrate { get; set; }
-        public int MinClientAdaptiveBitRate { get; set; }
+        public int? MinClientAdaptiveBitRate { get; set; }
         public int MinMotionAdaptiveBitRate { get; set; }
         public List<int> FpsValues { get; set; }
         public int IdrInterval { get; set; }
