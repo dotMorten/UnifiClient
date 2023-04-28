@@ -63,8 +63,26 @@ namespace dotMorten.Unifi.DataModels
         public string? Id { get; set; }
         public string? ModelKey { get; set; }
         public List<string>? SmartDetectTypes { get; set; }
+        public AddDataFrameMetadata? Metadata { get; set; }
+        //public List<string>? SmartDetectEvents { get; set; }
         public static AddDataFrame? FromJson(string json) => Newtonsoft.Json.JsonConvert.DeserializeObject<AddDataFrame>(json);
         public static AddDataFrame? FromJson(byte[] buffer, int index, int count) => Newtonsoft.Json.JsonConvert.DeserializeObject<AddDataFrame>(Encoding.UTF8.GetString(buffer, 0, count));
+
+        // {"smartDetectEvents":[],"metadata":{"sensorId":{"text":"644afde20118e403e4001d84"},"sensorName":{"text":"Smart Sensor:9B8C"},"type":{"text":"UFP-SENSE"}},}
+    }
+
+    internal class AddDataFrameMetadata
+    {
+        public AddDataFrameMetadataText? SensorId { get; set; }
+        public AddDataFrameMetadataText? SensorName { get; set; }
+        public AddDataFrameMetadataText? Type { get; set; }
+        public AddDataFrameMetadataText? MountType { get; set; }        
+        public string? ClientPlatform { get; set; }
+        
+    }
+    internal class AddDataFrameMetadataText
+    {
+        public string Text { get; set; }
     }
 
     internal struct UnifiHeader

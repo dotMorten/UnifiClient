@@ -315,7 +315,16 @@ namespace dotMorten.Unifi
                                     UserUpdated?.Invoke(this, user);
                                 }
                             }
-                            else // light, sensor, doorlock, viewer, display, 
+                            else if (action.ModelKey == "sensor")
+                            {
+                                var sensor = System.Sensors.Where(c => c.Id == action.Id).FirstOrDefault();
+                                if (sensor != null)
+                                {
+                                    JsonConvert.PopulateObject(json, sensor);
+                                    SensorUpdated?.Invoke(this, sensor);
+                                }
+                            }
+                            else // light, doorlock, viewer, display, 
                             {
                                 // TODO
                             }
@@ -342,6 +351,19 @@ namespace dotMorten.Unifi
                                             SmartDetectZone?.Invoke(this, new CameraEventArgs(addDataEvent, camera));
                                         }
                                     }
+                                    else if (!string.IsNullOrEmpty(addDataEvent.Metadata?.SensorId?.Text) && System?.Sensors.Where(c => c.Id == addDataEvent.Metadata.SensorId.Text).FirstOrDefault() is Sensor sensor)
+                                    {
+                                        if (addDataEvent.Type == "sensorMotion")
+                                            SensorMotion?.Invoke(this, sensor);
+                                        else if (addDataEvent.Type == "sensorClosed")
+                                            SensorClosed?.Invoke(this, sensor);
+                                        else if (addDataEvent.Type == "sensorOpened")
+                                            SensorOpened?.Invoke(this, sensor);
+                                        else
+                                        {
+
+                                        }
+                                    };
                                 }
                             }
                         }
@@ -381,15 +403,14 @@ namespace dotMorten.Unifi
         public event EventHandler<CameraEventArgs>? Motion;
 
         /// <summary>
-        /// Raised when the properties of a camera is updated.
+        /// Raised when the properties of a camera has been updated.
         /// </summary>
         public event EventHandler<Camera>? CameraUpdated;
 
         /// <summary>
-        /// Raised when the properties of a light is updated.
+        /// Raised when the properties of a light has been updated.
         /// </summary>
         public event EventHandler<Light>? LightUpdated;
-
 
         /// <summary>
         /// Raised when a light is turned on or off.
@@ -397,29 +418,49 @@ namespace dotMorten.Unifi
         public event EventHandler<Light>? LightIsOnChanged;        
 
         /// <summary>
-        /// Raised when the properties of a user is updated.
+        /// Raised when the properties of a user has been updated.
         /// </summary>
         public event EventHandler<UserAccount>? UserUpdated;
 
         /// <summary>
-        /// Raised when the properties of a bridge is updated.
+        /// Raised when the properties of a bridge has been updated.
         /// </summary>
         public event EventHandler<Bridge>? BridgeUpdated;
 
         /// <summary>
-        /// Raised when the properties of the NVR is updated.
+        /// Raised when the properties of the NVR has been updated.
         /// </summary>
         public event EventHandler<Nvr>? NvrUpdated;
 
         /// <summary>
-        /// Raised when the properties of a live view is updated.
+        /// Raised when the properties of a live view has been updated.
         /// </summary>
         public event EventHandler<LiveView>? LiveViewUpdated;
 
         /// <summary>
-        /// Raised when the properties of a group is updated.
+        /// Raised when the properties of a group has been updated.
         /// </summary>
         public event EventHandler<Group>? GroupUpdated;
+
+        /// <summary>
+        /// Raised when the properties of a sensor has been updated
+        /// </summary>
+        public event EventHandler<Sensor> SensorUpdated;
+
+        /// <summary>
+        /// Raised when a sensor detects motion
+        /// </summary>
+        public event EventHandler<Sensor> SensorMotion;
+
+        /// <summary>
+        /// Raised when a door sensor closed
+        /// </summary>
+        public event EventHandler<Sensor> SensorClosed;
+
+        /// <summary>
+        /// Raised when a door sensor opens
+        /// </summary>
+        public event EventHandler<Sensor> SensorOpened;
     }
 
     public class CameraEventArgs : EventArgs
