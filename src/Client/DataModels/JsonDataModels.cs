@@ -374,7 +374,7 @@ namespace dotMorten.Unifi.Protect.DataModels
         public bool IsMicEnabled { get; set; }
         public bool IsRecording { get; set; }
         public bool IsMotionDetected { get; set; }
-        public int PhyRate { get; set; }
+        public int? PhyRate { get; set; }
         public bool? HdrMode { get; set; }
         public string VideoMode { get; set; }
         public bool IsProbingForWifi { get; set; }
@@ -494,6 +494,9 @@ namespace dotMorten.Unifi.Protect.DataModels
         public List<Camera> Cameras { get; set; }
         public List<UserAccount> Users { get; set; }
         public string Geofencing { get; set; }
+        public List<Sensor> Sensors { get; set; }
+        public List<object> Doorlocks { get; set; }
+        public List<object> Chimes { get; set; }
     }
 
     public class CloudAccount : ProtectDevice
@@ -810,8 +813,193 @@ namespace dotMorten.Unifi.Protect.DataModels
         public List<object> Displays { get; set; }
         public List<Light> Lights { get; set; }
         public List<Bridge> Bridges { get; set; }
-        public List<object> Sensors { get; set; }
+        public List<Sensor> Sensors { get; set; }
         public List<object> Doorlocks { get; set; }
+    }
+
+    public class Sensor
+    {
+        public string Mac { get; set; }
+        public string Host { get; set; }
+        public string ConnectionHost { get; set; }
+        public string Type { get; set; }
+        public string Name { get; set; }
+        public long UpSince { get; set; }
+        public DateTimeOffset UpSinceDate => DateTimeOffset.FromUnixTimeMilliseconds(UpSince);
+        public long? Uptime { get; set; }
+        public long LastSeen { get; set; }
+        public long? ConnectedSince { get; set; }
+        public DateTimeOffset? ConnectedSinceDate
+        {
+            get
+            {
+                if (ConnectedSince is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(ConnectedSince.Value);
+            }
+        }
+        public string State { get; set; }
+        public int HardwareRevision { get; set; }
+        public string FirmwareVersion { get; set; }
+        public string LatestFirmwareVersion { get; set; }
+        public string FirmwareBuild { get; set; }
+        public bool IsUpdating { get; set; }
+        public bool IsDownloadingFW { get; set; }
+        public string FwUpdateState { get; set; }
+        public bool IsAdopting { get; set; }
+        public bool IsAdopted { get; set; }
+        public bool IsAdoptedByOther { get; set; }
+        public bool IsProvisioned { get; set; }
+        public bool IsRebooting { get; set; }
+        public bool IsSshEnabled { get; set; }
+        public bool CanAdopt { get; set; }
+        public bool IsAttemptingToConnect { get; set; }
+        public bool IsMotionDetected { get; set; }
+        public string MountType { get; set; }
+        public long? LeakDetectedAt { get; set; }
+        public long? TamperingDetectedAt { get; set; }
+        public DateTimeOffset? TamperingDetectedAtDate
+        {
+            get
+            {
+                if (TamperingDetectedAt is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(TamperingDetectedAt.Value);
+            }
+        }
+        public bool IsOpened { get; set; }
+        public long? OpenStatusChangedAt { get; set; }
+
+        public DateTimeOffset? OpenStatusChangedAtDate
+        {
+            get
+            {
+                if (OpenStatusChangedAt is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(OpenStatusChangedAt.Value);
+            }
+        }
+        public long? AlarmTriggeredAt { get; set; }
+
+        public DateTimeOffset? AlarmTriggeredAtDate
+        {
+            get
+            {
+                if (AlarmTriggeredAt is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(AlarmTriggeredAt.Value);
+            }
+        }
+        public long? MotionDetectedAt { get; set; }
+
+        public DateTimeOffset? MotionDetectedAtDate
+        {
+            get
+            {
+                if (MotionDetectedAt is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(MotionDetectedAt.Value);
+            }
+        }
+        public WiredConnectionState WiredConnectionState { get; set; }
+        public SensorStats Stats { get; set; }
+        public BluetoothConnectionState BluetoothConnectionState { get; set; }
+        public BatteryStatus BatteryStatus { get; set; }
+        public AlarmSettings AlarmSettings { get; set; }
+        public LightSettings LightSettings { get; set; }
+        public MotionSettings MotionSettings { get; set; }
+        public TemperatureSettings TemperatureSettings { get; set; }
+        public HumiditySettings HumiditySettings { get; set; }
+        public LedSettings LedSettings { get; set; }
+        public string Bridge { get; set; }
+        public string? Camera { get; set; }
+        public List<BridgeCandidate> BridgeCandidates { get; set; }
+        public string Id { get; set; }
+        public bool IsConnected { get; set; }
+        public string MarketName { get; set; }
+        public string ModelKey { get; set; }
+    }
+
+    public class SensorStats
+    {
+        public Light Light { get; set; }
+        public Humidity Humidity { get; set; }
+        public Temperature Temperature { get; set; }
+    }
+
+    public class Temperature
+    {
+        public double Value { get; set; }
+        public SensorThresholdStatus Status { get; set; }
+    }
+    public enum SensorThresholdStatus
+    {
+        Neutral,
+        Safe,
+        High,
+        Low
+    }
+    public class TemperatureSettings
+    {
+        public bool IsEnabled { get; set; }
+        public int? LowThreshold { get; set; }
+        public int? HighThreshold { get; set; }
+        public double Margin { get; set; }
+    }
+    public class AlarmSettings
+    {
+        public bool IsEnabled { get; set; }
+    }
+
+    public class BatteryStatus
+    {
+        public int Percentage { get; set; }
+        public bool IsLow { get; set; }
+    }
+
+    public class BluetoothConnectionState
+    {
+        public int SignalQuality { get; set; }
+        public int SignalStrength { get; set; }
+    }
+
+    public class BridgeCandidate
+    {
+        public string Id { get; set; }
+        public int SignalQuality { get; set; }
+        public long? LastSeen { get; set; }
+
+        public DateTimeOffset? LastSeenDate
+        {
+            get
+            {
+                if (LastSeen is null) return null;
+                return DateTimeOffset.FromUnixTimeMilliseconds(LastSeen.Value);
+            }
+        }
+    }
+
+    public class Humidity
+    {
+        public int Value { get; set; }
+        public string Status { get; set; }
+    }
+
+    public class HumiditySettings
+    {
+        public bool IsEnabled { get; set; }
+        public int? LowThreshold { get; set; }
+        public int? HighThreshold { get; set; }
+        public double Margin { get; set; }
+    }
+
+    public class LightSettings
+    {
+        public bool IsEnabled { get; set; }
+        public int? LowThreshold { get; set; }
+        public int? HighThreshold { get; set; }
+        public double Margin { get; set; }
+    }
+
+    public class MotionSettings
+    {
+        public bool IsEnabled { get; set; }
+        public int Sensitivity { get; set; }
     }
 }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
